@@ -55,6 +55,10 @@ async function buildAll(targets) {
   await runParallel(cpus().length, targets, build)
 }
 
+// runParallel 用于并行执行编译任务，并行数为 cpu 数
+// maxConcurrency：cpu 数
+// source：packages 目录下一级的目录的名称
+// iteratorFn：下面的 build 函数，是一个 async 函数
 async function runParallel(maxConcurrency, source, iteratorFn) {
   const ret = []
   const executing = []
@@ -62,7 +66,11 @@ async function runParallel(maxConcurrency, source, iteratorFn) {
     const p = Promise.resolve().then(() => iteratorFn(item, source))
     ret.push(p)
 
+    // 4 <= 10
     if (maxConcurrency <= source.length) {
+      // p 是由 Promise.resolve() 生成的 Promise 对象
+      // 其 then 回调函数会在本轮事件循环结束之前调用
+      // e 是同理，需要注意的是 e 与 p 并不是相同的对象
       const e = p.then(() => executing.splice(executing.indexOf(e), 1))
       executing.push(e)
       if (executing.length >= maxConcurrency) {

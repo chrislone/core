@@ -1,6 +1,5 @@
 import {
   activeEffect,
-  getDepFromReactive,
   shouldTrack,
   trackEffects,
   triggerEffects
@@ -54,17 +53,16 @@ export function trackRefValue(ref: RefBase<any>) {
 
 export function triggerRefValue(ref: RefBase<any>, newVal?: any) {
   ref = toRaw(ref)
-  const dep = ref.dep
-  if (dep) {
+  if (ref.dep) {
     if (__DEV__) {
-      triggerEffects(dep, {
+      triggerEffects(ref.dep, {
         target: ref,
         type: TriggerOpTypes.SET,
         key: 'value',
         newValue: newVal
       })
     } else {
-      triggerEffects(dep)
+      triggerEffects(ref.dep)
     }
   }
 }
@@ -74,6 +72,15 @@ export function isRef(r: any): r is Ref {
   return !!(r && r.__v_isRef === true)
 }
 
+/**
+ * <T extends object> 的形式被称为泛型约束（Generic Constraints）
+ * 表示 ref 函数入参类型 T 需要拥有 object 类型所拥有的属性
+ * 参考：https://www.typescriptlang.org/docs/handbook/2/generics.html#generic-constraints
+ *
+ * [T] extends [Ref] ? T : Ref<UnwrapRef<T>> 的形式被称为条件类型
+ * 可以根据 extends 的运算结果返回不同的类型
+ * 参考：https://www.typescriptlang.org/docs/handbook/2/conditional-types.html
+ */
 export function ref<T extends object>(
   value: T
 ): [T] extends [Ref] ? T : Ref<UnwrapRef<T>>
@@ -230,10 +237,6 @@ class ObjectRefImpl<T extends object, K extends keyof T> {
   set value(newVal) {
     this._object[this._key] = newVal
   }
-
-  get dep(): Dep | undefined {
-    return getDepFromReactive(toRaw(this._object), this._key)
-  }
 }
 
 export type ToRef<T> = IfAny<T, Ref<T>, [T] extends [Ref] ? T : Ref<T>>
@@ -277,6 +280,10 @@ type BaseTypes = string | number | boolean
  *   }
  * }
  * ```
+ *
+ * Note that api-extractor somehow refuses to include `declare module`
+ * augmentations in its generated d.ts, so we have to manually append them
+ * to the final generated d.ts in our build process.
  */
 export interface RefUnwrapBailTypes {}
 
